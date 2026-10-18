@@ -28,8 +28,8 @@ def deploy(name):
     try:
         notebookutils.notebook.create(name, "", content.text, LAKEHOUSE)  # noqa: F821 (Fabric built-in)
         return "created"
-    except Exception as e:  # the notebook is already there
-        if "exist" not in str(e).lower():
+    except Exception as e:  # the notebook is already there (ItemDisplayNameAlreadyInUse)
+        if "alreadyinuse" not in str(e).lower().replace(" ", ""):
             raise
         notebookutils.notebook.updateDefinition(name, content.text, LAKEHOUSE)  # noqa: F821
         return "updated"
