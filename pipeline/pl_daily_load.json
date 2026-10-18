@@ -1,0 +1,173 @@
+{
+  "properties": {
+    "description": "Daily load: landing files to bronze, silver and gold, then the data quality gate.",
+    "activities": [
+      {
+        "name": "Simulate source exports",
+        "description": "Demo only: writes today's files from the tills and the webshop into Files/landing.",
+        "type": "IfCondition",
+        "dependsOn": [],
+        "typeProperties": {
+          "expression": {
+            "value": "@not(equals(pipeline().parameters.simulate_source, 'none'))",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "00_generate_source_data",
+              "type": "TridentNotebook",
+              "dependsOn": [],
+              "policy": {
+                "timeout": "0.01:00:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 60,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "notebookId": "<00_generate_source_data id>",
+                "workspaceId": "<workspace id>",
+                "parameters": {
+                  "mode": {
+                    "value": {
+                      "value": "@pipeline().parameters.simulate_source",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ],
+          "ifFalseActivities": []
+        }
+      },
+      {
+        "name": "01_bronze_ingest",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "Simulate source exports",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 60,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "<01_bronze_ingest id>",
+          "workspaceId": "<workspace id>",
+          "parameters": {
+            "batch_id": {
+              "value": {
+                "value": "@pipeline().RunId",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "02_silver_transform",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "01_bronze_ingest",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 60,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "<02_silver_transform id>",
+          "workspaceId": "<workspace id>",
+          "parameters": {
+            "batch_id": {
+              "value": {
+                "value": "@pipeline().RunId",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "03_gold_model",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "02_silver_transform",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 60,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "<03_gold_model id>",
+          "workspaceId": "<workspace id>",
+          "parameters": {}
+        }
+      },
+      {
+        "name": "04_data_quality_gate",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "03_gold_model",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 60,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "<04_data_quality_gate id>",
+          "workspaceId": "<workspace id>",
+          "parameters": {
+            "run_id": {
+              "value": {
+                "value": "@pipeline().RunId",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "simulate_source": {
+        "type": "string",
+        "defaultValue": "next_day"
+      }
+    }
+  }
+}
